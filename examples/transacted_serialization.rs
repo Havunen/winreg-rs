@@ -7,8 +7,8 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::io;
-use winreg::transaction::Transaction;
 use winreg::HKCU;
+use winreg::transaction::Transaction;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 struct Coords {

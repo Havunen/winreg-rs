@@ -3,6 +3,7 @@
 // http://opensource.org/licenses/MIT>. This file
 // may not be copied, modified, or distributed
 // except according to those terms.
+use crate::bindings;
 use crate::common::*;
 use crate::enum_keys::EnumKeys;
 use crate::enum_keys_os_string::EnumKeysOsString;
@@ -20,9 +21,8 @@ use std::io;
 use std::mem::transmute;
 use std::os::windows::ffi::OsStringExt;
 use std::ptr;
-use windows_sys::Win32::Foundation;
-use windows_sys::Win32::System::Registry;
-pub use windows_sys::Win32::System::Registry::HKEY;
+
+pub use crate::bindings::HKEY;
 
 /// Handle of opened registry key
 #[derive(Debug)]
@@ -74,11 +74,11 @@ impl RegKey {
     /// ```
     pub fn load_app_key<N: AsRef<OsStr>>(filename: N, lock: bool) -> io::Result<RegKey> {
         let options = if lock {
-            Registry::REG_PROCESS_APPKEY
+            enums::REG_PROCESS_APPKEY as u32
         } else {
             0
         };
-        RegKey::load_app_key_with_flags(filename, enums::KEY_ALL_ACCESS, options)
+        RegKey::load_app_key_with_flags(filename, enums::KEY_ALL_ACCESS as REGSAM, options)
     }
 
     /// Load a registry hive from a file as an application hive with desired
@@ -92,19 +92,19 @@ impl RegKey {
     /// # use winreg::RegKey;
     /// # use winreg::enums::*;
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let handle = RegKey::load_app_key_with_flags("C:\\myhive.dat", KEY_READ, 0)?;
+    /// let handle = RegKey::load_app_key_with_flags("C:\\myhive.dat", KEY_READ as REGSAM, 0)?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn load_app_key_with_flags<N: AsRef<OsStr>>(
         filename: N,
-        perms: Registry::REG_SAM_FLAGS,
+        perms: REGSAM,
         options: u32,
     ) -> io::Result<RegKey> {
         let c_filename = to_utf16(filename);
         let mut new_hkey: HKEY = std::ptr::null_mut();
         match unsafe {
-            Registry::RegLoadAppKeyW(c_filename.as_ptr(), &mut new_hkey, perms, options, 0)
+            bindings::RegLoadAppKeyW(c_filename.as_ptr(), &mut new_hkey, perms, options, 0)
         } {
             0 => Ok(RegKey { hkey: new_hkey }),
             err => werr!(err),
@@ -144,7 +144,7 @@ impl RegKey {
     /// # }
     /// ```
     pub fn open_subkey<P: AsRef<OsStr>>(&self, path: P) -> io::Result<RegKey> {
-        self.open_subkey_with_flags(path, enums::KEY_READ)
+        self.open_subkey_with_flags(path, enums::KEY_READ as REGSAM)
     }
 
     /// Open subkey with desired permissions.
@@ -157,14 +157,14 @@ impl RegKey {
     /// # use winreg::enums::*;
     /// # use winreg::HKLM;
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// HKLM.open_subkey_with_flags("SOFTWARE\\Microsoft", KEY_READ)?;
+    /// HKLM.open_subkey_with_flags("SOFTWARE\\Microsoft", KEY_READ as REGSAM)?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn open_subkey_with_flags<P: AsRef<OsStr>>(
         &self,
         path: P,
-        perms: Registry::REG_SAM_FLAGS,
+        perms: REGSAM,
     ) -> io::Result<RegKey> {
         self.open_subkey_with_options_flags(path, 0, perms)
     }
@@ -179,20 +179,20 @@ impl RegKey {
     /// # use winreg::enums::*;
     /// # use winreg::HKLM;
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// HKLM.open_subkey_with_options_flags("SOFTWARE\\LinkKey", REG_OPTION_OPEN_LINK, KEY_READ)?;
+    /// HKLM.open_subkey_with_options_flags("SOFTWARE\\LinkKey", REG_OPTION_OPEN_LINK as u32, KEY_READ as REGSAM)?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn open_subkey_with_options_flags<P: AsRef<OsStr>>(
         &self,
         path: P,
-        options: Registry::REG_OPEN_CREATE_OPTIONS,
-        perms: Registry::REG_SAM_FLAGS,
+        options: u32,
+        perms: REGSAM,
     ) -> io::Result<RegKey> {
         let c_path = to_utf16(path);
         let mut new_hkey: HKEY = std::ptr::null_mut();
         match unsafe {
-            Registry::RegOpenKeyExW(self.hkey, c_path.as_ptr(), options, perms, &mut new_hkey)
+            bindings::RegOpenKeyExW(self.hkey, c_path.as_ptr(), options, perms, &mut new_hkey)
         } {
             0 => Ok(RegKey { hkey: new_hkey }),
             err => werr!(err),
@@ -206,7 +206,7 @@ impl RegKey {
         path: P,
         t: &Transaction,
     ) -> io::Result<RegKey> {
-        self.open_subkey_transacted_with_flags(path, t, Registry::KEY_READ)
+        self.open_subkey_transacted_with_flags(path, t, enums::KEY_READ as REGSAM)
     }
 
     /// Part of `transactions` feature.
@@ -215,7 +215,7 @@ impl RegKey {
         &self,
         path: P,
         t: &Transaction,
-        perms: Registry::REG_SAM_FLAGS,
+        perms: REGSAM,
     ) -> io::Result<RegKey> {
         self.open_subkey_transacted_with_options_flags(path, t, 0, perms)
     }
@@ -226,13 +226,13 @@ impl RegKey {
         &self,
         path: P,
         t: &Transaction,
-        options: Registry::REG_OPEN_CREATE_OPTIONS,
-        perms: Registry::REG_SAM_FLAGS,
+        options: u32,
+        perms: REGSAM,
     ) -> io::Result<RegKey> {
         let c_path = to_utf16(path);
         let mut new_hkey: HKEY = std::ptr::null_mut();
         match unsafe {
-            Registry::RegOpenKeyTransactedW(
+            bindings::RegOpenKeyTransactedW(
                 self.hkey,
                 c_path.as_ptr(),
                 options,
@@ -272,28 +272,28 @@ impl RegKey {
     /// # }
     /// ```
     pub fn create_subkey<P: AsRef<OsStr>>(&self, path: P) -> io::Result<(RegKey, RegDisposition)> {
-        self.create_subkey_with_flags(path, enums::KEY_ALL_ACCESS)
+        self.create_subkey_with_flags(path, enums::KEY_ALL_ACCESS as REGSAM)
     }
 
     pub fn create_subkey_with_flags<P: AsRef<OsStr>>(
         &self,
         path: P,
-        perms: Registry::REG_SAM_FLAGS,
+        perms: REGSAM,
     ) -> io::Result<(RegKey, RegDisposition)> {
-        self.create_subkey_with_options_flags(path, REG_OPTION_NON_VOLATILE, perms)
+        self.create_subkey_with_options_flags(path, REG_OPTION_NON_VOLATILE as u32, perms)
     }
 
     pub fn create_subkey_with_options_flags<P: AsRef<OsStr>>(
         &self,
         path: P,
-        options: Registry::REG_OPEN_CREATE_OPTIONS,
-        perms: Registry::REG_SAM_FLAGS,
+        options: u32,
+        perms: REGSAM,
     ) -> io::Result<(RegKey, RegDisposition)> {
         let c_path = to_utf16(path);
         let mut new_hkey: HKEY = std::ptr::null_mut();
         let mut disp_buf: u32 = 0;
         match unsafe {
-            Registry::RegCreateKeyExW(
+            bindings::RegCreateKeyExW(
                 self.hkey,
                 c_path.as_ptr(),
                 0,
@@ -320,7 +320,7 @@ impl RegKey {
         path: P,
         t: &Transaction,
     ) -> io::Result<(RegKey, RegDisposition)> {
-        self.create_subkey_transacted_with_flags(path, t, Registry::KEY_ALL_ACCESS)
+        self.create_subkey_transacted_with_flags(path, t, enums::KEY_ALL_ACCESS as REGSAM)
     }
 
     /// Part of `transactions` feature.
@@ -329,9 +329,14 @@ impl RegKey {
         &self,
         path: P,
         t: &Transaction,
-        perms: Registry::REG_SAM_FLAGS,
+        perms: REGSAM,
     ) -> io::Result<(RegKey, RegDisposition)> {
-        self.create_subkey_transacted_with_options_flags(path, t, REG_OPTION_NON_VOLATILE, perms)
+        self.create_subkey_transacted_with_options_flags(
+            path,
+            t,
+            REG_OPTION_NON_VOLATILE as u32,
+            perms,
+        )
     }
 
     /// Part of `transactions` feature.
@@ -340,14 +345,14 @@ impl RegKey {
         &self,
         path: P,
         t: &Transaction,
-        options: Registry::REG_OPEN_CREATE_OPTIONS,
-        perms: Registry::REG_SAM_FLAGS,
+        options: u32,
+        perms: REGSAM,
     ) -> io::Result<(RegKey, RegDisposition)> {
         let c_path = to_utf16(path);
         let mut new_hkey: HKEY = std::ptr::null_mut();
         let mut disp_buf: u32 = 0;
         match unsafe {
-            Registry::RegCreateKeyTransactedW(
+            bindings::RegCreateKeyTransactedW(
                 self.hkey,
                 c_path.as_ptr(),
                 0,
@@ -388,7 +393,7 @@ impl RegKey {
     ) -> io::Result<()> {
         let c_old_name = to_utf16(old_name);
         let c_new_name = to_utf16(new_name);
-        match unsafe { Registry::RegRenameKey(self.hkey, c_old_name.as_ptr(), c_new_name.as_ptr()) }
+        match unsafe { bindings::RegRenameKey(self.hkey, c_old_name.as_ptr(), c_new_name.as_ptr()) }
         {
             0 => Ok(()),
             err => werr!(err),
@@ -405,7 +410,7 @@ impl RegKey {
     /// # use winreg::enums::*;
     /// # use winreg::HKCU;
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let src = HKCU.open_subkey_with_flags("Software\\MyProduct", KEY_READ)?;
+    /// let src = HKCU.open_subkey_with_flags("Software\\MyProduct", KEY_READ as REGSAM)?;
     /// let (dst, dst_disp) = HKCU.create_subkey("Software\\MyProduct\\Section2")?;
     /// src.copy_tree("Section1", &dst)?;
     /// # Ok(())
@@ -413,7 +418,7 @@ impl RegKey {
     /// ```
     pub fn copy_tree<P: AsRef<OsStr>>(&self, path: P, dest: &RegKey) -> io::Result<()> {
         let c_path = to_utf16(path);
-        match unsafe { Registry::RegCopyTreeW(self.hkey, c_path.as_ptr(), dest.hkey) } {
+        match unsafe { bindings::RegCopyTreeW(self.hkey, c_path.as_ptr(), dest.hkey) } {
             0 => Ok(()),
             err => werr!(err),
         }
@@ -422,7 +427,7 @@ impl RegKey {
     pub fn query_info(&self) -> io::Result<RegKeyMetadata> {
         let mut info: RegKeyMetadata = RegKeyMetadata::default();
         match unsafe {
-            Registry::RegQueryInfoKeyW(
+            bindings::RegQueryInfoKeyW(
                 self.hkey,
                 ptr::null_mut(), // Class: winapi::LPWSTR,
                 ptr::null_mut(), // ClassLen: u32,
@@ -495,7 +500,7 @@ impl RegKey {
     /// # use winreg::enums::*;
     /// # use winreg::HKLM;
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let system = HKLM.open_subkey_with_flags("HARDWARE\\DESCRIPTION\\System", KEY_READ)?;
+    /// let system = HKLM.open_subkey_with_flags("HARDWARE\\DESCRIPTION\\System", KEY_READ as REGSAM)?;
     /// for (name, value) in system.enum_values().map(|x| x.unwrap()) {
     ///     println!("{} = {:?}", name, value);
     /// }
@@ -518,7 +523,7 @@ impl RegKey {
     /// # use winreg::enums::*;
     /// # use winreg::HKLM;
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let system = HKLM.open_subkey_with_flags("HARDWARE\\DESCRIPTION\\System", KEY_READ)?;
+    /// let system = HKLM.open_subkey_with_flags("HARDWARE\\DESCRIPTION\\System", KEY_READ as REGSAM)?;
     /// for (name, value) in system.enum_values_os_string().map(|x| x.unwrap()) {
     ///     println!("{:?} = {:?}", name, value);
     /// }
@@ -560,18 +565,18 @@ impl RegKey {
     /// # use winreg::HKLM;
     /// # fn main() -> Result<(), Box<dyn Error>> {
     /// // delete the key from the 32-bit registry view
-    /// HKLM.delete_subkey_with_flags(r"Software\MyProduct\History", KEY_WOW64_32KEY)?;
+    /// HKLM.delete_subkey_with_flags(r"Software\MyProduct\History", KEY_WOW64_32KEY as REGSAM)?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn delete_subkey_with_flags<P: AsRef<OsStr>>(
         &self,
         path: P,
-        perms: Registry::REG_SAM_FLAGS,
+        perms: REGSAM,
     ) -> io::Result<()> {
         let c_path = to_utf16(path);
         match unsafe {
-            Registry::RegDeleteKeyExW(
+            bindings::RegDeleteKeyExW(
                 self.hkey,
                 c_path.as_ptr(), // This parameter cannot be NULL.
                 perms,
@@ -599,11 +604,11 @@ impl RegKey {
         &self,
         path: P,
         t: &Transaction,
-        perms: Registry::REG_SAM_FLAGS,
+        perms: REGSAM,
     ) -> io::Result<()> {
         let c_path = to_utf16(path);
         match unsafe {
-            Registry::RegDeleteKeyTransactedW(
+            bindings::RegDeleteKeyTransactedW(
                 self.hkey,
                 c_path.as_ptr(), // This parameter cannot be NULL.
                 perms,
@@ -639,7 +644,7 @@ impl RegKey {
             c_path.as_ptr()
         };
         match unsafe {
-            Registry::RegDeleteTreeW(
+            bindings::RegDeleteTreeW(
                 self.hkey,
                 path_ptr, //If this parameter is NULL, the subkeys and values of this key are deleted.
             )
@@ -694,7 +699,7 @@ impl RegKey {
         let mut buf: Vec<u8> = Vec::with_capacity(buf_len as usize);
         loop {
             match unsafe {
-                Registry::RegQueryValueExW(
+                bindings::RegQueryValueExW(
                     self.hkey,
                     c_name.as_ptr(),
                     ptr::null_mut(),
@@ -708,8 +713,8 @@ impl RegKey {
                         buf.set_len(buf_len as usize);
                     }
                     // minimal check before transmute to RegType
-                    if buf_type > Registry::REG_QWORD {
-                        return werr!(Foundation::ERROR_BAD_FILE_TYPE);
+                    if buf_type > bindings::REG_QWORD {
+                        return werr!(bindings::ERROR_BAD_FILE_TYPE);
                     }
                     let t: RegType = unsafe { transmute(buf_type as u8) };
                     return Ok(RegValue {
@@ -717,7 +722,7 @@ impl RegKey {
                         vtype: t,
                     });
                 }
-                Foundation::ERROR_MORE_DATA => {
+                bindings::ERROR_MORE_DATA => {
                     buf.reserve(buf_len as usize);
                 }
                 err => return werr!(err),
@@ -767,7 +772,7 @@ impl RegKey {
         let c_name = to_utf16(name);
         let t = value.vtype.clone() as u32;
         match unsafe {
-            Registry::RegSetValueExW(
+            bindings::RegSetValueExW(
                 self.hkey,
                 c_name.as_ptr(),
                 0,
@@ -797,7 +802,7 @@ impl RegKey {
     /// ```
     pub fn delete_value<N: AsRef<OsStr>>(&self, name: N) -> io::Result<()> {
         let c_name = to_utf16(name);
-        match unsafe { Registry::RegDeleteValueW(self.hkey, c_name.as_ptr()) } {
+        match unsafe { bindings::RegDeleteValueW(self.hkey, c_name.as_ptr()) } {
             0 => Ok(()),
             err => werr!(err),
         }
@@ -1051,13 +1056,11 @@ impl RegKey {
     }
 
     fn close_(&mut self) -> io::Result<()> {
-        // don't try to close predefined keys
-        // The root hkey overflows with windows-sys, where HKEY is an alias for isize.
-        // Cast to u32 to keep comparisons intact.
+        // Predefined keys use sign-extended pseudo-handles and must not be closed.
         if self.hkey as usize >= enums::HKEY_CLASSES_ROOT as usize {
             return Ok(());
         };
-        match unsafe { Registry::RegCloseKey(self.hkey) } {
+        match unsafe { bindings::RegCloseKey(self.hkey) } {
             0 => Ok(()),
             err => werr!(err),
         }
@@ -1068,7 +1071,7 @@ impl RegKey {
         #[allow(clippy::unnecessary_cast)]
         let mut name = [0 as u16; 2048];
         match unsafe {
-            Registry::RegEnumKeyExW(
+            bindings::RegEnumKeyExW(
                 self.hkey,
                 index,
                 name.as_mut_ptr(),
@@ -1080,7 +1083,7 @@ impl RegKey {
             )
         } {
             0 => Some(Ok(OsString::from_wide(&name[..name_len as usize]))),
-            Foundation::ERROR_NO_MORE_ITEMS => None,
+            bindings::ERROR_NO_MORE_ITEMS => None,
             err => Some(werr!(err)),
         }
     }
@@ -1098,7 +1101,7 @@ impl RegKey {
         let mut buf: Vec<u8> = Vec::with_capacity(buf_len as usize);
         loop {
             match unsafe {
-                Registry::RegEnumValueW(
+                bindings::RegEnumValueW(
                     self.hkey,
                     index,
                     name.as_mut_ptr(),
@@ -1115,8 +1118,8 @@ impl RegKey {
                         buf.set_len(buf_len as usize);
                     }
                     // minimal check before transmute to RegType
-                    if buf_type > Registry::REG_QWORD {
-                        return Some(werr!(Foundation::ERROR_BAD_FILE_TYPE));
+                    if buf_type > bindings::REG_QWORD {
+                        return Some(werr!(bindings::ERROR_BAD_FILE_TYPE));
                     }
                     let t: RegType = unsafe { transmute(buf_type as u8) };
                     let value = RegValue {
@@ -1125,11 +1128,11 @@ impl RegKey {
                     };
                     return Some(Ok((name, value)));
                 }
-                Foundation::ERROR_MORE_DATA => {
+                bindings::ERROR_MORE_DATA => {
                     name_len += 1; //for NULL char
                     buf.reserve(buf_len as usize);
                 }
-                Foundation::ERROR_NO_MORE_ITEMS => return None,
+                bindings::ERROR_NO_MORE_ITEMS => return None,
                 err => return Some(werr!(err)),
             }
         }

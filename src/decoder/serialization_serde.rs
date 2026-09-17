@@ -3,11 +3,11 @@
 // http://opensource.org/licenses/MIT>. This file
 // may not be copied, modified, or distributed
 // except according to those terms.
-use super::{DecodeResult, Decoder, DecoderCursor, DecoderError, DECODER_SAM};
-use crate::{types::FromRegValue, RegValue};
+use super::{DECODER_SAM, DecodeResult, Decoder, DecoderCursor, DecoderError};
+use crate::bindings;
+use crate::{RegValue, types::FromRegValue};
 use serde::de::*;
 use std::fmt;
-use windows_sys::Win32::Foundation;
 
 impl Error for DecoderError {
     fn custom<T: fmt::Display>(msg: T) -> Self {
@@ -317,7 +317,7 @@ impl<'de> MapAccess<'de> for Decoder {
                     self.cursor = KeyName(
                         index,
                         res?.into_string().map_err(|_| {
-                            std::io::Error::from_raw_os_error(Foundation::ERROR_INVALID_DATA as i32)
+                            std::io::Error::from_raw_os_error(bindings::ERROR_INVALID_DATA)
                         })?,
                     );
                     seed.deserialize(&mut *self).map(Some)
@@ -334,9 +334,7 @@ impl<'de> MapAccess<'de> for Decoder {
                         self.cursor = FieldName(
                             index,
                             res?.0.into_string().map_err(|_| {
-                                std::io::Error::from_raw_os_error(
-                                    Foundation::ERROR_INVALID_DATA as i32,
-                                )
+                                std::io::Error::from_raw_os_error(bindings::ERROR_INVALID_DATA)
                             })?,
                         );
                         seed.deserialize(&mut *self).map(Some)

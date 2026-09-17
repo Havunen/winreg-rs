@@ -3,11 +3,10 @@
 // http://opensource.org/licenses/MIT>. This file
 // may not be copied, modified, or distributed
 // except according to those terms.
+use crate::bindings::FileTimeToSystemTime;
+pub use crate::bindings::{FILETIME, SYSTEMTIME};
 use std::fmt;
 use std::ops::Deref;
-use windows_sys::Win32::Foundation::FILETIME;
-use windows_sys::Win32::Foundation::SYSTEMTIME;
-use windows_sys::Win32::System::Time::FileTimeToSystemTime;
 
 pub struct FileTime(pub(crate) FILETIME);
 
@@ -53,7 +52,7 @@ pub struct RegKeyMetadata {
 }
 
 impl RegKeyMetadata {
-    /// Returns `last_write_time` field as `windows_sys::Win32::Foundation::SYSTEMTIME`
+    /// Returns `last_write_time` field as [`SYSTEMTIME`].
     pub fn get_last_write_time_system(&self) -> SYSTEMTIME {
         let mut st: SYSTEMTIME = unsafe { ::std::mem::zeroed() };
         unsafe {

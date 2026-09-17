@@ -3,9 +3,9 @@
 // http://opensource.org/licenses/MIT>. This file
 // may not be copied, modified, or distributed
 // except according to those terms.
+use crate::bindings;
 use crate::{RegKey, RegValue};
 use std::io;
-use windows_sys::Win32::Foundation;
 
 /// Iterator over values
 pub struct EnumValues<'key> {
@@ -27,7 +27,7 @@ impl<'a> Iterator for EnumValues<'a> {
                 self.index += 1;
                 match name_os_string.into_string() {
                     Ok(name_string) => Some(Ok((name_string, value))),
-                    Err(_) => Some(werr!(Foundation::ERROR_INVALID_DATA)),
+                    Err(_) => Some(werr!(bindings::ERROR_INVALID_DATA)),
                 }
             }
         }

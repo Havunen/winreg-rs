@@ -4,8 +4,8 @@
 // may not be copied, modified, or distributed
 // except according to those terms.
 use crate::RegKey;
+use crate::bindings;
 use std::io;
-use windows_sys::Win32::Foundation;
 
 /// Iterator over subkeys names
 pub struct EnumKeys<'key> {
@@ -27,7 +27,7 @@ impl Iterator for EnumKeys<'_> {
                 self.index += 1;
                 match name_os_string.into_string() {
                     Ok(name_string) => Some(Ok(name_string)),
-                    Err(_) => Some(werr!(Foundation::ERROR_INVALID_DATA)),
+                    Err(_) => Some(werr!(bindings::ERROR_INVALID_DATA)),
                 }
             }
         }

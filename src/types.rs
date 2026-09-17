@@ -5,15 +5,15 @@
 // except according to those terms.
 
 //! Traits for loading/saving Registry values
+use crate::RegValue;
+use crate::bindings;
 use crate::common::*;
 use crate::enums::*;
-use crate::RegValue;
 use std::convert::TryInto;
 use std::ffi::{OsStr, OsString};
 use std::io;
 use std::os::windows::ffi::OsStringExt;
 use std::slice;
-use windows_sys::Win32::Foundation;
 
 /// A trait for types that can be loaded from registry values.
 ///
@@ -44,7 +44,7 @@ impl FromRegValue for String {
                 }
                 Ok(s)
             }
-            _ => werr!(Foundation::ERROR_BAD_FILE_TYPE),
+            _ => werr!(bindings::ERROR_BAD_FILE_TYPE),
         }
     }
 }
@@ -63,7 +63,7 @@ impl FromRegValue for Vec<String> {
                 let v: Vec<String> = s.split('\u{0}').map(|x| x.to_owned()).collect();
                 Ok(v)
             }
-            _ => werr!(Foundation::ERROR_BAD_FILE_TYPE),
+            _ => werr!(bindings::ERROR_BAD_FILE_TYPE),
         }
     }
 }
@@ -82,7 +82,7 @@ impl FromRegValue for OsString {
                 let s = OsString::from_wide(words);
                 Ok(s)
             }
-            _ => werr!(Foundation::ERROR_BAD_FILE_TYPE),
+            _ => werr!(bindings::ERROR_BAD_FILE_TYPE),
         }
     }
 }
@@ -103,7 +103,7 @@ impl FromRegValue for Vec<OsString> {
                     .collect();
                 Ok(v)
             }
-            _ => werr!(Foundation::ERROR_BAD_FILE_TYPE),
+            _ => werr!(bindings::ERROR_BAD_FILE_TYPE),
         }
     }
 }
@@ -114,7 +114,7 @@ macro_rules! try_from_reg_value_int {
             .as_ref()
             .try_into()
             .map($map)
-            .map_err(|_| io::Error::from_raw_os_error(Foundation::ERROR_INVALID_DATA as i32))
+            .map_err(|_| io::Error::from_raw_os_error(bindings::ERROR_INVALID_DATA))
     };
 }
 
@@ -123,7 +123,7 @@ impl FromRegValue for u32 {
         match val.vtype {
             REG_DWORD => try_from_reg_value_int!(val, u32::from_ne_bytes),
             REG_DWORD_BIG_ENDIAN => try_from_reg_value_int!(val, u32::from_be_bytes),
-            _ => werr!(Foundation::ERROR_BAD_FILE_TYPE),
+            _ => werr!(bindings::ERROR_BAD_FILE_TYPE),
         }
     }
 }
@@ -132,7 +132,7 @@ impl FromRegValue for u64 {
     fn from_reg_value(val: &RegValue) -> io::Result<u64> {
         match val.vtype {
             REG_QWORD => try_from_reg_value_int!(val, u64::from_ne_bytes),
-            _ => werr!(Foundation::ERROR_BAD_FILE_TYPE),
+            _ => werr!(bindings::ERROR_BAD_FILE_TYPE),
         }
     }
 }

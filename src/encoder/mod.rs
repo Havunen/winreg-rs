@@ -70,8 +70,9 @@ pub struct Encoder<Tr: AsRef<Transaction>> {
     state: EncoderState,
 }
 
-const ENCODER_SAM: u32 =
-    KEY_CREATE_SUB_KEY | KEY_SET_VALUE | DELETE | KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE;
+const ENCODER_SAM: REGSAM =
+    (KEY_CREATE_SUB_KEY | KEY_SET_VALUE | DELETE | KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE)
+        as REGSAM;
 
 impl Encoder<Transaction> {
     pub fn from_key(key: &RegKey) -> EncodeResult<Encoder<Transaction>> {

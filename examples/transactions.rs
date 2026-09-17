@@ -4,8 +4,8 @@
 // may not be copied, modified, or distributed
 // except according to those terms.
 use std::io;
-use winreg::transaction::Transaction;
 use winreg::HKCU;
+use winreg::transaction::Transaction;
 
 fn main() -> io::Result<()> {
     let t = Transaction::new()?;

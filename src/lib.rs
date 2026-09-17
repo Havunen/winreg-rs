@@ -32,7 +32,7 @@
 //!    println!("info = {:?}", info);
 //!    let mt = info.get_last_write_time_system();
 //!    println!(
-//!        "last_write_time as windows_sys::Win32::Foundation::SYSTEMTIME = {}-{:02}-{:02} {:02}:{:02}:{:02}",
+//!        "last_write_time as winreg::reg_key_metadata::SYSTEMTIME = {}-{:02}-{:02} {:02}:{:02}:{:02}",
 //!        mt.wYear, mt.wMonth, mt.wDay, mt.wHour, mt.wMinute, mt.wSecond
 //!    );
 //!
@@ -117,6 +117,8 @@ cfg_if::cfg_if! {
         pub use crate::reg_key_metadata::RegKeyMetadata;
         pub use crate::reg_value::RegValue;
 
+        #[allow(non_snake_case, non_camel_case_types, dead_code, clippy::upper_case_acronyms)]
+        mod bindings;
         mod common;
         #[cfg(feature = "serialization-serde")]
         pub mod decoder;

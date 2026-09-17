@@ -70,7 +70,7 @@ pub struct Decoder {
     cursor: DecoderCursor,
 }
 
-const DECODER_SAM: u32 = KEY_QUERY_VALUE | KEY_ENUMERATE_SUB_KEYS;
+const DECODER_SAM: REGSAM = (KEY_QUERY_VALUE | KEY_ENUMERATE_SUB_KEYS) as REGSAM;
 
 impl Decoder {
     pub fn from_key(key: &RegKey) -> DecodeResult<Decoder> {

@@ -1,4 +1,4 @@
-use winreg::{types::ToRegValue, RegValue};
+use winreg::{RegValue, types::ToRegValue};
 
 macro_rules! test_display {
     ($f:ident, $v:expr) => {

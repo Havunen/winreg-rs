@@ -3,14 +3,14 @@
 // http://opensource.org/licenses/MIT>. This file
 // may not be copied, modified, or distributed
 // except according to those terms.
-use rand::Rng;
+use rand::distr::{Alphanumeric, SampleString};
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use tempfile::tempdir;
-use windows_sys::Win32::Foundation;
+
 use winreg::enums::*;
 use winreg::types::FromRegValue;
-use winreg::{RegKey, RegValue, HKCU, HKLM};
+use winreg::{HKCU, HKLM, RegKey, RegValue};
 
 mod common;
 
@@ -31,15 +31,16 @@ fn test_load_appkey() {
         let key1 = RegKey::load_app_key(&file_path, true).unwrap();
         key1.set_value(val_name, &val1).unwrap();
         // this fails on Windows 7 with ERROR_ALREADY_EXISTS
-        let key_err = RegKey::load_app_key_with_flags(&file_path, KEY_READ, 0).unwrap_err();
+        let key_err =
+            RegKey::load_app_key_with_flags(&file_path, KEY_READ as REGSAM, 0).unwrap_err();
         assert_eq!(
             key_err.raw_os_error(),
-            Some(Foundation::ERROR_SHARING_VIOLATION as i32)
+            Some(32) // ERROR_SHARING_VIOLATION
         );
     }
     let val2: String = {
         // this fails on Windows 7 with ERROR_ALREADY_EXISTS
-        let key2 = RegKey::load_app_key_with_flags(&file_path, KEY_READ, 1).unwrap();
+        let key2 = RegKey::load_app_key_with_flags(&file_path, KEY_READ as REGSAM, 1).unwrap();
         key2.get_value(val_name).unwrap()
     };
     assert_eq!(val1, val2);
@@ -48,7 +49,7 @@ fn test_load_appkey() {
 #[test]
 fn test_open_subkey_with_flags_query_info() {
     let win = HKLM
-        .open_subkey_with_flags("Software\\Microsoft\\Windows", KEY_READ)
+        .open_subkey_with_flags("Software\\Microsoft\\Windows", KEY_READ as REGSAM)
         .unwrap();
 
     let info = win.query_info().unwrap();
@@ -56,12 +57,17 @@ fn test_open_subkey_with_flags_query_info() {
     #[cfg(feature = "chrono")]
     info.get_last_write_time_chrono();
 
-    assert!(win
-        .open_subkey_with_flags("CurrentVersion\\", KEY_READ)
-        .is_ok());
-    assert!(HKLM
-        .open_subkey_with_flags("i\\just\\hope\\nobody\\created\\that\\key", KEY_READ)
-        .is_err());
+    assert!(
+        win.open_subkey_with_flags("CurrentVersion\\", KEY_READ as REGSAM)
+            .is_ok()
+    );
+    assert!(
+        HKLM.open_subkey_with_flags(
+            "i\\just\\hope\\nobody\\created\\that\\key",
+            KEY_READ as REGSAM
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -84,9 +90,12 @@ fn test_delete_subkey() {
 #[test]
 fn test_delete_subkey_with_flags() {
     let path = "Software\\Classes\\WinRegRsTestDeleteSubkeyWithFlags";
-    HKCU.create_subkey_with_flags(path, KEY_WOW64_32KEY)
+    HKCU.create_subkey_with_flags(path, KEY_WOW64_32KEY as REGSAM)
         .unwrap();
-    assert!(HKCU.delete_subkey_with_flags(path, KEY_WOW64_32KEY).is_ok());
+    assert!(
+        HKCU.delete_subkey_with_flags(path, KEY_WOW64_32KEY as REGSAM)
+            .is_ok()
+    );
 }
 
 #[test]
@@ -147,7 +156,7 @@ test_value_sz!(test_os_str_value, "OsStrValue", OsStr::new => OsString);
 fn test_long_string_value() {
     with_key!(key, "LongStringValue" => {
         let name = "RustLongStringVal";
-        let val1 : String = rand::thread_rng().gen_ascii_chars().take(7000).collect();
+        let val1 = Alphanumeric.sample_string(&mut rand::rng(), 7000);
         key.set_value(name, &val1).unwrap();
         let val2: String = key.get_value(name).unwrap();
         assert_eq!(val1, val2);
@@ -158,7 +167,7 @@ fn test_long_string_value() {
 fn test_long_os_string_value() {
     with_key!(key, "LongOsStringValue" => {
         let name = "RustLongOsStringVal";
-        let val1 = rand::thread_rng().gen_ascii_chars().take(7000).collect::<String>();
+        let val1 = Alphanumeric.sample_string(&mut rand::rng(), 7000);
         let val1 = OsStr::new(&val1);
         key.set_value(name, &val1).unwrap();
         let val2: OsString = key.get_value(name).unwrap();

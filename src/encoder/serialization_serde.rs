@@ -4,10 +4,10 @@
 // may not be copied, modified, or distributed
 // except according to those terms.
 use super::EncoderState::*;
-use super::{EncodeResult, Encoder, EncoderError, ENCODER_SAM};
+use super::{ENCODER_SAM, EncodeResult, Encoder, EncoderError};
+use crate::RegValue;
 use crate::enums::RegType;
 use crate::transaction::Transaction;
-use crate::RegValue;
 use serde::ser::*;
 use std::fmt;
 use std::mem;

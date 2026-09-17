@@ -38,22 +38,21 @@
 //!    Ok(())
 //!}
 //!```
+use crate::bindings;
 use std::io;
 use std::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use std::ptr;
-use windows_sys::Win32::Foundation;
-use windows_sys::Win32::Storage::FileSystem;
 
 #[derive(Debug)]
 pub struct Transaction {
-    pub handle: Foundation::HANDLE,
+    pub handle: bindings::HANDLE,
 }
 
 impl Transaction {
     //TODO: add arguments
     pub fn new() -> io::Result<Transaction> {
         unsafe {
-            let handle = FileSystem::CreateTransaction(
+            let handle = bindings::CreateTransaction(
                 ptr::null_mut(),
                 ptr::null_mut(),
                 0,
@@ -62,7 +61,7 @@ impl Transaction {
                 0,
                 ptr::null_mut(),
             );
-            if handle == Foundation::INVALID_HANDLE_VALUE {
+            if handle == bindings::INVALID_HANDLE_VALUE {
                 return Err(io::Error::last_os_error());
             };
             Ok(Transaction { handle })
@@ -71,7 +70,7 @@ impl Transaction {
 
     pub fn commit(self) -> io::Result<()> {
         unsafe {
-            match FileSystem::CommitTransaction(self.handle) {
+            match bindings::CommitTransaction(self.handle) {
                 0 => Err(io::Error::last_os_error()),
                 _ => Ok(()),
             }
@@ -80,7 +79,7 @@ impl Transaction {
 
     pub fn rollback(self) -> io::Result<()> {
         unsafe {
-            match FileSystem::RollbackTransaction(self.handle) {
+            match bindings::RollbackTransaction(self.handle) {
                 0 => Err(io::Error::last_os_error()),
                 _ => Ok(()),
             }
@@ -89,7 +88,7 @@ impl Transaction {
 
     fn close_(&mut self) -> io::Result<()> {
         unsafe {
-            match Foundation::CloseHandle(self.handle) {
+            match bindings::CloseHandle(self.handle) {
                 0 => Err(io::Error::last_os_error()),
                 _ => Ok(()),
             }
